@@ -1,0 +1,19 @@
+Package: vizExtremities
+Title: Interactive Visualization of Transcript Extremities using R Shiny
+Version: 0.0.0.9000
+Authors@R: 
+    person("Arnaud", "Liehrmann", , "arnaud.liehrmann@universite-paris-saclay.fr", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-4936-1056"))
+Description: The vizExtremities package offers an innovative and interactive way to visualize the extremities (3' and 5' ends) of long read sequecing. Leveraging the Shiny framework, this package enables researchers to gain insights into the structure of RNA isoforms with ease.
+URL: https://github.com/aLiehrmann/vizExtremities
+BugReports: https://github.com/aLiehrmann/vizExtremities/issues
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+Imports: 
+    GenomicRanges,
+    ggplot2,
+    Rsamtools,
+    shiny,
+    stringr
