@@ -1,6 +1,6 @@
 # What is vizExtremities ?
 
-The `vizExtremities` package laverages the Shiny framework to offer an interactive way to visualize the extremities (3' and 5' ends) of long read sequecing. Consequently, it enables researchers to gain insights into the structure of RNA isoforms with ease.
+The `vizExtremities` package laverages the Shiny framework to offer an interactive way to visualize the extremities (3' and 5' ends) of long read sequencing. Consequently, it enables researchers to gain insights into the structure of RNA isoforms with ease.
 
 
 ## How can I get vizExtremities ?
