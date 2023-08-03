@@ -42,69 +42,88 @@ server <- function(input, output, session) {
   
   output$scatterplot <- shiny::renderPlot({
     shiny::req(data$all_reads)
-    
+    #browser()
     #- (3',5') counts ---------------------------------------------------------#
-    sub_reads <- data$all_reads[
-      as.character(GenomicRanges::seqnames(data$all_reads))==input$chr &
-      GenomicRanges::start(data$all_reads)<input$prob_end & 
-      GenomicRanges::start(data$all_reads)>input$prob_start-input$max_range &  
-      GenomicRanges::end(data$all_reads)>input$prob_start & 
-      GenomicRanges::end(data$all_reads)<input$prob_end+input$max_range & 
-      as.character(GenomicRanges::strand(data$all_reads))%in%input$strand,
-    ]
+    ext_df <- do.call(rbind, lapply(c("+","-"), function(strand){
+      sub_reads <- data$all_reads[
+        as.character(GenomicRanges::seqnames(data$all_reads))==input$chr &
+          GenomicRanges::start(data$all_reads)<input$prob_end & 
+          GenomicRanges::start(data$all_reads)>input$prob_start-input$max_range &  
+          GenomicRanges::end(data$all_reads)>input$prob_start & 
+          GenomicRanges::end(data$all_reads)<input$prob_end+input$max_range &
+          as.character(GenomicRanges::strand(data$all_reads))==strand,
+      ]
+      
+      #- GenomicRanges::coverage ? --------------------------------------------#
+      ext_counts <- table(paste0(
+        GenomicRanges::start(sub_reads),
+        "_",
+        GenomicRanges::end(sub_reads)
+      ))
+      ext_id <- names(ext_counts)
+      if (strand=="+") {
+        ext_start <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
+        ext_end   <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
+      } else {
+        ext_end   <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
+        ext_start <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
+      } 
+      ext_df <- data.frame(
+        ext_id, 
+        ext_start,
+        ext_end, 
+        counts = as.integer(ext_counts)
+      )
+    }))
     
-    ext_counts <- table(paste0(
-      GenomicRanges::start(sub_reads),
-      "_",
-      GenomicRanges::end(sub_reads)
-    ))
-    ext_id     <- names(ext_counts)
-    ext_start  <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
-    ext_end    <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
-    ext_df     <- data.frame(
-      ext_id, 
-      ext_start, 
-      ext_end, 
-      counts = as.integer(ext_counts)
-    )
-    
-    #- Plot -------------------------------------------------------------------#
-    if(is.null(input$annot)){
-      #- Annotations not provided by the user ---------------------------------#
-      ggplot2::ggplot(
-        ext_df, 
-        ggplot2::aes(
-          x     = ext_end, 
-          y     = ext_start, 
-          size  = counts, 
-          alpha = counts
-        )
-      ) +
-        ggplot2::geom_abline(
-          slope     = 1, 
-          intercept = 0, 
-          color     = "grey70"
-        )+
-        ggplot2::geom_point() +
-        ggplot2::xlab(ifelse(input$strand=="+", "3'", "5'"))+
-        ggplot2::ylab(ifelse(input$strand=="+", "5'", "3'"))+
-        ggplot2::coord_cartesian(
-          xlim = c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-          ylim = c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
-        )+
-        ggplot2::theme_bw()+
-        ggplot2::theme(text = ggplot2::element_text(size=20))
-    } else {
-      #- Retrieve overlapped annotations --------------------------------------#
+    #- NA ?! remove it for now ------------------------------------------------# 
+    ext_df <- ext_df[!is.na(ext_df$ext_start),]
+    no_ext <- nrow(ext_df)==0
+    no_sub_annotations <- TRUE
+    #browser()
+    if (!(is.null(input$annot) | no_ext)) {
       sub_annotations <- data$annotations[
         as.character(GenomicRanges::seqnames(data$annotations))==input$chr &
-        GenomicRanges::start(data$annotations)<max(GenomicRanges::end(sub_reads)) & 
-        GenomicRanges::end(data$annotations)>min(GenomicRanges::start(sub_reads)) & 
-        as.character(GenomicRanges::strand(data$annotations)) %in% input$strand &
-        as.character(data$annotations$type)==input$annot_type,
+          GenomicRanges::start(data$annotations)<max(ext_df$ext_end) & 
+          GenomicRanges::end(data$annotations)>min(ext_df$ext_start) &
+          as.character(data$annotations$type)==input$annot_type,
       ]
+      if (length(sub_annotations)>0) {
+        sub_annotations <- data.frame(sub_annotations)
+        sub_annotations <- do.call(rbind, lapply(1:nrow(sub_annotations), function(i){
+          start <- sub_annotations$start[[i]]
+          end <- sub_annotations$end[[i]]
+          if (sub_annotations$strand[[i]]=="+"){
+            data.frame(
+              x     = c(start,end),
+              xend  = c(end,end),
+              y     = c(start,start),
+              yend  = c(start,end),
+              color = factor(
+                rep(sub_annotations[[input$annot_lab]][[i]],2),
+                levels=unique(sub_annotations[[input$annot_lab]])
+              )
+            )
+          } else{
+            data.frame(
+              x     = c(start,start),
+              xend  = c(start,end),
+              y     = c(start,end),
+              yend  = c(end,end),
+              color = factor(
+                rep(sub_annotations[[input$annot_lab]][[i]],2),
+                levels=unique(sub_annotations[[input$annot_lab]])
+              )
+            )
+          }
+        }))
+        no_sub_annotations <- FALSE
+      } 
+    }
+    #browser()
+    if (!(no_ext | no_sub_annotations)) {
       ggplot2::ggplot(
-        ext_df, 
+        data = ext_df, 
         ggplot2::aes(
           x     = ext_end, 
           y     = ext_start, 
@@ -112,31 +131,59 @@ server <- function(input, output, session) {
           alpha = counts
         )
       ) +
-        ggplot2::geom_rect(
+        ggplot2::geom_point() +
+        ggplot2::geom_segment(
+          inherit.aes = FALSE,
           ggplot2::aes(
-            xmin = start, 
-            xmax = end, 
-            ymin = start, 
-            ymax = end, 
-            fill = .data[[input$annot_lab]], 
-            x    = NULL, 
-            y    = NULL
+            x     = x, 
+            xend  = xend, 
+            y     = y, 
+            yend  = yend, 
+            color = color
           ), 
-          data  = data.frame(sub_annotations), 
-          alpha = 0.3,
-          size  = NULL
+          data       = sub_annotations, 
+          linewidth  = 1
         )+
+        ggplot2::scale_color_discrete(name = "annotation")+
         ggplot2::geom_abline(
           slope     = 1, 
           intercept = 0, 
           color     = "grey70")+
-        ggplot2::geom_point() +
-        ggplot2::xlab(ifelse(input$strand=="+", "3'", "5'"))+
-        ggplot2::ylab(ifelse(input$strand=="+", "5'", "3'"))+
+        ggplot2::xlab("3'")+
+        ggplot2::ylab("5'")+
         ggplot2::coord_cartesian(
           xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
           ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
         )+
+        ggplot2::theme_bw()+
+        ggplot2::theme(text=ggplot2::element_text(size=20))
+    } else if (!no_ext & no_sub_annotations) {
+      ggplot2::ggplot(
+        data = ext_df, 
+        ggplot2::aes(
+          x     = ext_end, 
+          y     = ext_start, 
+          size  = counts, 
+          alpha = counts
+        )
+      ) +
+        ggplot2::geom_point() +
+        ggplot2::geom_abline(
+          slope     = 1, 
+          intercept = 0, 
+          color     = "grey70")+
+        ggplot2::xlab("3'")+
+        ggplot2::ylab("5'")+
+        ggplot2::coord_cartesian(
+          xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
+          ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
+        )+
+        ggplot2::theme_bw()+
+        ggplot2::theme(text=ggplot2::element_text(size=20))
+    } else {
+      ggplot2::ggplot()+
+        ggplot2::xlab("3'")+
+        ggplot2::ylab("5'")+
         ggplot2::theme_bw()+
         ggplot2::theme(text=ggplot2::element_text(size=20))
     }
@@ -152,48 +199,138 @@ server <- function(input, output, session) {
       #- !!!! COPY OF RENDERPLOT OTHERWISE ERROR MESSAGE !!!! -----------------#
       print({
         shiny::req(data$all_reads)
+        #browser()
+        #- (3',5') counts ---------------------------------------------------------#
+        ext_df <- do.call(rbind, lapply(c("+","-"), function(strand){
+          sub_reads <- data$all_reads[
+            as.character(GenomicRanges::seqnames(data$all_reads))==input$chr &
+              GenomicRanges::start(data$all_reads)<input$prob_end & 
+              GenomicRanges::start(data$all_reads)>input$prob_start-input$max_range &  
+              GenomicRanges::end(data$all_reads)>input$prob_start & 
+              GenomicRanges::end(data$all_reads)<input$prob_end+input$max_range &
+              as.character(GenomicRanges::strand(data$all_reads))==strand,
+          ]
+          
+          #- GenomicRanges::coverage ? --------------------------------------------#
+          ext_counts <- table(paste0(
+            GenomicRanges::start(sub_reads),
+            "_",
+            GenomicRanges::end(sub_reads)
+          ))
+          ext_id <- names(ext_counts)
+          if (strand=="+") {
+            ext_start <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
+            ext_end   <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
+          } else {
+            ext_end   <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
+            ext_start <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
+          } 
+          ext_df <- data.frame(
+            ext_id, 
+            ext_start,
+            ext_end, 
+            counts = as.integer(ext_counts)
+          )
+        }))
         
-        sub_reads <- data$all_reads[
-          as.character(GenomicRanges::seqnames(data$all_reads))==input$chr &
-          GenomicRanges::start(data$all_reads)<input$prob_end & 
-          GenomicRanges::start(data$all_reads)>input$prob_start-input$max_range &  
-          GenomicRanges::end(data$all_reads)>input$prob_start & 
-          GenomicRanges::end(data$all_reads)<input$prob_end+input$max_range & 
-          as.character(GenomicRanges::strand(data$all_reads)) %in% input$strand,
-        ]
-        
-        ext_counts <- table(paste0(
-          GenomicRanges::start(sub_reads),
-          "_",
-          GenomicRanges::end(sub_reads)
-        ))
-        ext_id     <- names(ext_counts)
-        ext_start  <- as.integer(stringr::str_extract(ext_id, "\\d+(?=_)"))
-        ext_end    <- as.integer(stringr::str_extract(ext_id, "(?<=_)\\d+"))
-        ext_df     <- data.frame(
-          ext_id, 
-          ext_start, 
-          ext_end, 
-          counts=as.integer(ext_counts)
-        )
-        
-        if(is.null(input$annot)){
+        #- NA ?! remove it for now ------------------------------------------------# 
+        ext_df <- ext_df[!is.na(ext_df$ext_start),]
+        no_ext <- nrow(ext_df)==0
+        no_sub_annotations <- TRUE
+        #browser()
+        if (!(is.null(input$annot) | no_ext)) {
+          sub_annotations <- data$annotations[
+            as.character(GenomicRanges::seqnames(data$annotations))==input$chr &
+              GenomicRanges::start(data$annotations)<max(ext_df$ext_end) & 
+              GenomicRanges::end(data$annotations)>min(ext_df$ext_start) &
+              as.character(data$annotations$type)==input$annot_type,
+          ]
+          if (length(sub_annotations)>0) {
+            sub_annotations <- data.frame(sub_annotations)
+            sub_annotations <- do.call(rbind, lapply(1:nrow(sub_annotations), function(i){
+              start <- sub_annotations$start[[i]]
+              end <- sub_annotations$end[[i]]
+              if (sub_annotations$strand[[i]]=="+"){
+                data.frame(
+                  x     = c(start,end),
+                  xend  = c(end,end),
+                  y     = c(start,start),
+                  yend  = c(start,end),
+                  color = factor(
+                    rep(sub_annotations[[input$annot_lab]][[i]],2),
+                    levels=unique(sub_annotations[[input$annot_lab]])
+                  )
+                )
+              } else{
+                data.frame(
+                  x     = c(start,start),
+                  xend  = c(start,end),
+                  y     = c(start,end),
+                  yend  = c(end,end),
+                  color = factor(
+                    rep(sub_annotations[[input$annot_lab]][[i]],2),
+                    levels=unique(sub_annotations[[input$annot_lab]])
+                  )
+                )
+              }
+            }))
+            no_sub_annotations <- FALSE
+          } 
+        }
+        #browser()
+        if (!(no_ext | no_sub_annotations)) {
           ggplot2::ggplot(
-            ext_df, 
+            data = ext_df, 
             ggplot2::aes(
               x     = ext_end, 
               y     = ext_start, 
               size  = counts, 
-              alpha = counts)
+              alpha = counts
+            )
           ) +
+            ggplot2::geom_point() +
+            ggplot2::geom_segment(
+              inherit.aes = FALSE,
+              ggplot2::aes(
+                x     = x, 
+                xend  = xend, 
+                y     = y, 
+                yend  = yend, 
+                color = color
+              ), 
+              data       = sub_annotations, 
+              linewidth  = 1
+            )+
+            ggplot2::scale_color_discrete(name = "annotation")+
             ggplot2::geom_abline(
               slope     = 1, 
               intercept = 0, 
-              color     = "grey70"
+              color     = "grey70")+
+            ggplot2::xlab("3'")+
+            ggplot2::ylab("5'")+
+            ggplot2::coord_cartesian(
+              xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
+              ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
             )+
+            ggplot2::theme_bw()+
+            ggplot2::theme(text=ggplot2::element_text(size=20))
+        } else if (!no_ext & no_sub_annotations) {
+          ggplot2::ggplot(
+            data = ext_df, 
+            ggplot2::aes(
+              x     = ext_end, 
+              y     = ext_start, 
+              size  = counts, 
+              alpha = counts
+            )
+          ) +
             ggplot2::geom_point() +
-            ggplot2::xlab(ifelse(input$strand=="+", "3'", "5'"))+
-            ggplot2::ylab(ifelse(input$strand=="+", "5'", "3'"))+
+            ggplot2::geom_abline(
+              slope     = 1, 
+              intercept = 0, 
+              color     = "grey70")+
+            ggplot2::xlab("3'")+
+            ggplot2::ylab("5'")+
             ggplot2::coord_cartesian(
               xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
               ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
@@ -201,48 +338,9 @@ server <- function(input, output, session) {
             ggplot2::theme_bw()+
             ggplot2::theme(text=ggplot2::element_text(size=20))
         } else {
-          sub_annotations <- data$annotations[
-            as.character(GenomicRanges::seqnames(data$annotations))==input$chr &
-            GenomicRanges::start(data$annotations)<max(GenomicRanges::end(sub_reads)) & 
-            GenomicRanges::end(data$annotations)>min(GenomicRanges::start(sub_reads)) & 
-            as.character(GenomicRanges::strand(data$annotations)) %in% input$strand &
-            as.character(data$annotations$type)==input$annot_type,
-          ]
-          
-          ggplot2::ggplot(
-            ext_df, 
-            ggplot2::aes(
-              x     = ext_end, 
-              y     = ext_start, 
-              size  = counts, 
-              alpha = counts)
-            ) +
-            ggplot2::geom_rect(
-              ggplot2::aes(
-                xmin = start, 
-                xmax = end, 
-                ymin = start, 
-                ymax = end, 
-                fill = .data[[input$annot_lab]], 
-                x    = NULL, 
-                y    = NULL
-              ), 
-              data  = data.frame(sub_annotations), 
-              alpha = 0.3,
-              size  = NULL
-            )+
-            ggplot2::geom_abline(
-              slope     = 1, 
-              intercept = 0, 
-              color     = "grey70"
-            )+
-            ggplot2::geom_point() +
-            ggplot2::xlab(ifelse(input$strand=="+", "3'", "5'"))+
-            ggplot2::ylab(ifelse(input$strand=="+", "5'", "3'"))+
-            ggplot2::coord_cartesian(
-              xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-              ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
-            )+
+          ggplot2::ggplot()+
+            ggplot2::xlab("3'")+
+            ggplot2::ylab("5'")+
             ggplot2::theme_bw()+
             ggplot2::theme(text=ggplot2::element_text(size=20))
         }

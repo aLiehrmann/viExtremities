@@ -19,12 +19,6 @@ ui <- function(){
           choices = c(), 
           selected=c()
         ),
-        shiny::checkboxGroupInput(
-          'strand', 
-          'Strand', 
-          choices = c('Forward' = '+', 'Reverse' = '-'), 
-          selected = c('+', '-')
-        ),
         shiny::numericInput(
           'prob_start', 
           'Start position',
