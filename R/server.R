@@ -93,7 +93,7 @@ server <- function(input, output, session) {
         sub_annotations <- do.call(rbind, lapply(1:nrow(sub_annotations), function(i){
           start <- sub_annotations$start[[i]]
           end <- sub_annotations$end[[i]]
-          if (sub_annotations$strand[[i]]=="+"){
+          if (sub_annotations$strand[[i]]=="-"){
             data.frame(
               x     = c(start,end),
               xend  = c(end,end),
@@ -125,8 +125,8 @@ server <- function(input, output, session) {
       ggplot2::ggplot(
         data = ext_df, 
         ggplot2::aes(
-          x     = ext_end, 
-          y     = ext_start, 
+          x     = ext_start, 
+          y     = ext_end, 
           size  = counts, 
           alpha = counts
         )
@@ -149,11 +149,11 @@ server <- function(input, output, session) {
           slope     = 1, 
           intercept = 0, 
           color     = "grey70")+
-        ggplot2::xlab("3'")+
-        ggplot2::ylab("5'")+
+        ggplot2::xlab("5'")+
+        ggplot2::ylab("3'")+
         ggplot2::coord_cartesian(
-          xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-          ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
+          xlim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100),         
+          ylim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100)
         )+
         ggplot2::theme_bw()+
         ggplot2::theme(text=ggplot2::element_text(size=20))
@@ -161,8 +161,8 @@ server <- function(input, output, session) {
       ggplot2::ggplot(
         data = ext_df, 
         ggplot2::aes(
-          x     = ext_end, 
-          y     = ext_start, 
+          x     = ext_start, 
+          y     = ext_end, 
           size  = counts, 
           alpha = counts
         )
@@ -172,18 +172,18 @@ server <- function(input, output, session) {
           slope     = 1, 
           intercept = 0, 
           color     = "grey70")+
-        ggplot2::xlab("3'")+
-        ggplot2::ylab("5'")+
+        ggplot2::xlab("5'")+
+        ggplot2::ylab("3'")+
         ggplot2::coord_cartesian(
-          xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-          ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
+          xlim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100),         
+          ylim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100)
         )+
         ggplot2::theme_bw()+
         ggplot2::theme(text=ggplot2::element_text(size=20))
     } else {
       ggplot2::ggplot()+
-        ggplot2::xlab("3'")+
-        ggplot2::ylab("5'")+
+        ggplot2::xlab("5'")+
+        ggplot2::ylab("3'")+
         ggplot2::theme_bw()+
         ggplot2::theme(text=ggplot2::element_text(size=20))
     }
@@ -250,7 +250,7 @@ server <- function(input, output, session) {
             sub_annotations <- do.call(rbind, lapply(1:nrow(sub_annotations), function(i){
               start <- sub_annotations$start[[i]]
               end <- sub_annotations$end[[i]]
-              if (sub_annotations$strand[[i]]=="+"){
+              if (sub_annotations$strand[[i]]=="-"){
                 data.frame(
                   x     = c(start,end),
                   xend  = c(end,end),
@@ -282,8 +282,8 @@ server <- function(input, output, session) {
           ggplot2::ggplot(
             data = ext_df, 
             ggplot2::aes(
-              x     = ext_end, 
-              y     = ext_start, 
+              x     = ext_start, 
+              y     = ext_end, 
               size  = counts, 
               alpha = counts
             )
@@ -306,11 +306,11 @@ server <- function(input, output, session) {
               slope     = 1, 
               intercept = 0, 
               color     = "grey70")+
-            ggplot2::xlab("3'")+
-            ggplot2::ylab("5'")+
+            ggplot2::xlab("5'")+
+            ggplot2::ylab("3'")+
             ggplot2::coord_cartesian(
-              xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-              ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
+              xlim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100),         
+              ylim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100)
             )+
             ggplot2::theme_bw()+
             ggplot2::theme(text=ggplot2::element_text(size=20))
@@ -318,8 +318,8 @@ server <- function(input, output, session) {
           ggplot2::ggplot(
             data = ext_df, 
             ggplot2::aes(
-              x     = ext_end, 
-              y     = ext_start, 
+              x     = ext_start, 
+              y     = ext_end, 
               size  = counts, 
               alpha = counts
             )
@@ -329,18 +329,18 @@ server <- function(input, output, session) {
               slope     = 1, 
               intercept = 0, 
               color     = "grey70")+
-            ggplot2::xlab("3'")+
-            ggplot2::ylab("5'")+
+            ggplot2::xlab("5'")+
+            ggplot2::ylab("3'")+
             ggplot2::coord_cartesian(
-              xlim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100),         
-              ylim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100)
+              xlim=c(min(ext_df$ext_start)-100,max(ext_df$ext_start)+100),         
+              ylim=c(min(ext_df$ext_end)-100,max(ext_df$ext_end)+100)
             )+
             ggplot2::theme_bw()+
             ggplot2::theme(text=ggplot2::element_text(size=20))
         } else {
           ggplot2::ggplot()+
-            ggplot2::xlab("3'")+
-            ggplot2::ylab("5'")+
+            ggplot2::xlab("5'")+
+            ggplot2::ylab("3'")+
             ggplot2::theme_bw()+
             ggplot2::theme(text=ggplot2::element_text(size=20))
         }
